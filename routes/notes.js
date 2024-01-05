@@ -1,14 +1,10 @@
 const express=require('express');
 const router=express.Router();
-const {createNewNote,getAllNotes, updateNoteById, deleteById, searchByKeyword,shareById}=require('../controllers/notes')
+const {createNewNote,getAllNotes, updateNoteById, deleteById, searchByKeyword,shareById, findNoteById}=require('../controllers/notes')
 //get a list of all notes for the authenticated user
-router.get('/api/notes',(req,res,next)=>{
-
-});
+router.get('/api/notes',getAllNotes);
 //get a note by id for authenticated user
-router.get('/api/notes/:id',(req,res,next)=>{
-
-});
+router.get('/api/notes/:id',findNoteById);
 //create a new note for the authenticated user
 router.post('/api/notes',createNewNote);
 //update an existing note by ID for authenticated user

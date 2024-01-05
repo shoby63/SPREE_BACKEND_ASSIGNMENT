@@ -50,17 +50,33 @@ exports.getDetails = (authToken) => {
   }
 };
 exports.getAllNotes = async (req, res, next) => {
+  try{
   const userInfo = this.getDetails(req.headers.authorization);
-  Notes.find({ owner: userInfo.id }).then((result) => {
-    console.log(result);
-  });
-  return res.status(200).json({
-    data: result,
-  });
+  const results= await Notes.find({ owner: userInfo.id });
+  const sharedNotes= await Notes.find({sharedWith:userInfo.email});
+  const mergedResults = [...results, ...sharedNotes];
+  return res.status(200).json({status:"success",content:mergedResults});
+  }catch(err){
+    return res.status(400).json({status:'Internal Server Error',err:err})
+  }
+
 };
+exports.findNoteById= async (req,res,next)=>{
+        try{
+          const noteId=req.params.id;
+          const userInfo= await this.getDetails(req.headers.authorization);
+          const note= Notes.findOne({id:noteId});
+          if(note.owner===userInfo.id){
+            return res.status(200).json({info:"Note fetched successfully",content:note})
+          }else{
+            return res.status(200).json({"status": "Unauthorized to access that note"})
+          }
+        }catch(err){
+          return res.status(400).json({status:"Internal server error",err:err})
+        }
+}
 exports.createNewNote = async (req, res, next) => {
   const userInfo = await this.getDetails(req.headers.authorization);
-  console.log(userInfo);
   const { title, content } = req.body;
   if (userInfo) {
     try {
@@ -68,7 +84,7 @@ exports.createNewNote = async (req, res, next) => {
         id: uuidv4(),
         title: title,
         content: content,
-        owner: userInfo?.content?.data?.id,
+        owner: userInfo?.id,
       });
       newnoteItem
         .save()
@@ -99,59 +115,76 @@ exports.createNewNote = async (req, res, next) => {
   }
 };
 exports.updateNoteById = async (req, res, next) => {
-  const userInfo = await this.getDetails(req.headers.authorization);
-  const noteId = req.params.id;
-  const updatedNote = req.body;
-  if (noteId && userInfo) {
-    try {
-      //find the details of owner or more specifically owner
-      Notes.findById(noteId)
-        .then((res) => {
-          console.log(res);
-          //check if current user is owner of this note or not?
-          if (res.owner === userInfo?.content?.data?.id) {
-            Notes.findOneAndUpdate({ id: noteId }, updatedNote, {
+  try {
+    const user = await this.getDetails(req.headers.authorization);
+    const noteId = req.params.id.slice(1);
+    const updatedNoteData = req.body;
+
+    if (noteId && user) {
+      // Find the details of the note
+      Notes.findOne({ id: noteId })
+        .then((foundNote) => {
+          if (!foundNote) {
+            return res.status(404).json({
+              status: "Note not found",
+            });
+          }
+
+          // Check if the current user is the owner of this note
+          if (foundNote.owner === user.id) {
+            Notes.findOneAndUpdate({ id: noteId }, updatedNoteData, {
               new: true,
             })
-              .then((doc) => {
-                console.log(doc);
+              .then((updatedNote) => {
+                if (!updatedNote) {
+                  return res.status(500).json({
+                    status: "Failed to update the note, please try again.",
+                  });
+                }
+
                 return res.status(200).json({
                   status: 200,
                   payload: {
-                    id: doc.id,
-                    title: doc.title,
-                    content: doc.content,
-                    owner: doc.owner,
+                    id: updatedNote.id,
+                    title: updatedNote.title,
+                    content: updatedNote.content,
+                    owner: updatedNote.owner,
                   },
                 });
               })
-              .catch((err) => {
-                return res.status(200).json({
-                  status: "Server failed to update the Note Please Try Again!",
-                  err: err,
+              .catch((updateErr) => {
+                return res.status(500).json({
+                  status: "Server failed to update the note. Please try again.",
+                  err: updateErr,
                 });
               });
           } else {
-            return res.status(200).json({
-              status: "Unauthenticated to update Note",
+            return res.status(403).json({
+              status: "Unauthorized to update the note.",
             });
           }
         })
-        .catch((err) => {
-          console.log(err);
-          return res.status(400).json({
-            status: "Note does not exist or failed to load the current Note",
-            err: err,
+        .catch((findErr) => {
+          console.error(findErr);
+          return res.status(500).json({
+            status: "Failed to load the note details. Please try again.",
+            err: findErr,
           });
         });
-    } catch (err) {
+    } else {
       return res.status(400).json({
-        status: "Server failed to update the Note Please Try Again!",
-        err: err,
+        status: "Invalid note ID or user information.",
       });
     }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: "Server failed to update the note. Please try again.",
+      err: err,
+    });
   }
 };
+
 exports.deleteById = async (req, res, next) => {
   try {
     const userInfo = await this.getDetails(req.headers.authorization);
