@@ -52,11 +52,14 @@ Search Functionality: does the code implement text indexing and search functiona
 
 **How to use Project on Local Development Server**
 Speer Backend Assignment
+
 Technologies Used: Node js, Express js, Json web Token (JWT) based authentication, Mongodb and Mongoose ORM. Mocha for writing and Integrating Tests. 
 
 **How to use: **
+
    1-  install necessary Dependencies : **npm i**
    2-  To start the server use : **npm start. **
+   
 Using RestApis:
  1- Authentication endpoints:
      a) https:localhost:7000/api/auth/signup: Post request.
