@@ -15,30 +15,6 @@ exports.getDetails = (authToken) => {
           } else {
             console.log("user", user);
             resolve(user);
-            // User.findOne({ email: user?.email })
-            //   .exec()
-            //   .then((result) => {
-            //     const payload = {
-            //       status: true,
-            //       content: {
-            //         data: {
-            //           id: result.id,
-            //           name: result.name,
-            //           email: result.email,
-            //           created_at: result.created_at,
-            //         },
-            //       },
-            //     };
-
-            // })
-            // .catch((err) => {
-            //   console.log(err);
-            //   reject({
-            //     status: false,
-            //     message: "User Does not exist",
-            //     error: err,
-            //   });
-            // });
           }
         }
       );
@@ -51,9 +27,9 @@ exports.getDetails = (authToken) => {
 };
 exports.getAllNotes = async (req, res, next) => {
   try{
-  const userInfo = this.getDetails(req.headers.authorization);
+  const userInfo = await this.getDetails(req.headers.authorization);
   const results= await Notes.find({ owner: userInfo.id });
-  const sharedNotes= await Notes.find({sharedWith:userInfo.email});
+  const sharedNotes = await Notes.find({ sharedWith: { $in: [userInfo.email] } });
   const mergedResults = [...results, ...sharedNotes];
   return res.status(200).json({status:"success",content:mergedResults});
   }catch(err){
@@ -281,6 +257,6 @@ exports.shareById = async (req, res, next) => {
   } catch (err) {
     return res
       .status(400)
-      .json({ status: 404, err: "Failed to share Note", metaInfo: err });
+      .json({ status: 404, err: "Failed to share Note", metaInfo: err.message });
   }
 };
